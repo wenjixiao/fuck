@@ -1,6 +1,8 @@
 -module(idpool).
--compile(export_all).
+
 -behaviour(gen_server).
+
+-compile(export_all).
 
 %%
 %% Client Functions

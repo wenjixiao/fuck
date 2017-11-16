@@ -1,55 +1,56 @@
 -module(server).
--record(player,{player_id,level}).
--record(client_proxy,{pid,player_id,player}).
--record(state,{client_proxys,games}).
+
+-include("planet.hrl").
+
 -compile(export_all).
 
-start() ->
-    loop(#state{client_proxys=[],games=[]}).
+-record(shadow_info,{shadow_pid,player_id}).
+-record(state,{shadows,games}).
 
+start() ->
+    loop(#state{shadows=[],games=[]}).
+                                                   
 loop(State) ->
 	receive
-		{ClientProxy,{login,PlayerId,Password}} ->
+		{From,{login,PlayerId,Password}} ->
 			io:format("{~p,~p} login!~n",[PlayerId,Password]),
-			case lists:keytake(PlayerId,2,State#state.client_proxys) of
+			case lists:keytake(PlayerId,2,State#state.shadows) of
 				% player's line broken
 				{value,Tuple,TupleList2} -> 
-					NewTuple = Tuple#client_proxy{pid=From},
-					loop(State#state{client_proxys=[NewTuple|TupleList2]});
+					NewTuple = Tuple#shadow_info{shadow_pid=From},
+					loop(State#state{shadows=[NewTuple|TupleList2]});
 				% player not login now
 				false ->
 					case get_player(PlayerId) of
 						{value,Player} ->
-		    				ClientProxy1 = ClientProxy#client_proxy{player_id=PlayerId,player=Player},
-							NewState = State#state{client_proxys=[ClientProxy1|State#state.client_proxys]},
-							client_proxy:send(From,{login_return,value,Player}),
+		    				ShadowInfo = #shadow_info{shadow_pid=From,player_id=Player#player.id},  
+							NewState = State#state{shadows=[ShadowInfo|State#state.shadows]},
+							shadow:send(From,{login_return,value,Player}),
 							loop(NewState);
 						false ->
-							io:format("exception: ~p~n",[PlayerId]),
 							Reason = "player_id error or password error!",
-							client_proxy:send(From,{login_return,false,Reason}),
+							shadow:send(From,{login_return,false,Reason}),
 							loop(State)
 					end
 			end;
-		{ClientProxy,{invite,TargetPlayerId}} ->
-			case lists:keyfind(TargetPlayerId,2,State#state.client_proxys) of
-				ClientProxy1 -> 
-					% todo?
-					% game:start(ClientProxy,ClientProxy1);
+		{From,{invite,PlayerId}} ->
+			case lists:keyfind(PlayerId,2,State#state.shadows) of
+				#shadow_info{shadow_pid=ShadowPid} -> 
+					game:start(From,ShadowPid);
 				false -> ok
 			end,
 			loop(State);
-        Msg -> 
-            io:format("planet ~p: ~p~n",[self(),Msg]),
+        Other -> 
+            io:format("planet msg other ~p: ~p~n",[self(),Other]),
             loop(State)
     end.
 
 get_player(Name) ->
 	case Name of
 		wenjixiao ->
-			{value,#player{player_id=wenjixiao,level='3d'}};
+			{value,#player{id=wenjixiao,level='3d'}};
 		zhongzhong ->
-			{value,#player{player_id=zhongzhong,level='1d'}};
+			{value,#player{id=zhongzhong,level='1d'}};
 		Other ->
 			false
 	end.
