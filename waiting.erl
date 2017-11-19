@@ -1,6 +1,6 @@
 -module(waiting).
 
--compile(export_all).
+-export([start/0]).
 
 start() ->
     listen(8787).
@@ -19,5 +19,5 @@ wait_connect(ListenSocket,ServerPid) ->
     % continue wait
     spawn(?MODULE,wait_connect,[ListenSocket,ServerPid]),
     % run client_proxy
-    shadow:start(Socket,ServerPid).
+    proxy:start(Socket,ServerPid).
 

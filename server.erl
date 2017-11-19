@@ -2,41 +2,40 @@
 
 -include("planet.hrl").
 
--compile(export_all).
+-export([start/0]).
 
--record(shadow_info,{shadow_pid,player_id}).
--record(state,{shadows,games}).
+-record(state,{proxy_infos,game_infos}).
 
 start() ->
-    loop(#state{shadows=[],games=[]}).
+	% proxys contains proxy_infos
+    loop(#state{proxy_infos=[],game_infos=[]}).
                                                    
 loop(State) ->
 	receive
-		{From,{login,PlayerId,Password}} ->
+		{ProxyInfo,{login,PlayerId,Password}} ->
 			io:format("{~p,~p} login!~n",[PlayerId,Password]),
-			case lists:keytake(PlayerId,2,State#state.shadows) of
+			case lists:keytake(PlayerId,2,State#state.proxy_infos) of
 				% player's line broken
 				{value,Tuple,TupleList2} -> 
-					NewTuple = Tuple#shadow_info{shadow_pid=From},
-					loop(State#state{shadows=[NewTuple|TupleList2]});
+					NewTuple = Tuple#proxy_info{proxy_pid=ProxyInfo#proxy_info.proxy_pid},
+					loop(State#state{proxy_infos=[NewTuple|TupleList2]});
 				% player not login now
 				false ->
 					case get_player(PlayerId) of
 						{value,Player} ->
-		    				ShadowInfo = #shadow_info{shadow_pid=From,player_id=Player#player.id},  
-							NewState = State#state{shadows=[ShadowInfo|State#state.shadows]},
-							shadow:send(From,{login_return,value,Player}),
+		    				ProxyInfo = ProxyInfo#proxy_info{player_id=Player#player.id,player=Player},  
+							NewState = State#state{proxy_infos=[ProxyInfo|State#state.proxy_infos]},
+							proxy:send(ProxyInfo#proxy_info.proxy_pid,#server_msg{msg={login_return,value,Player}}),
 							loop(NewState);
 						false ->
 							Reason = "player_id error or password error!",
-							shadow:send(From,{login_return,false,Reason}),
+							proxy:send(ProxyInfo#proxy_info.proxy_pid,#server_msg{msg={login_return,false,Reason}}),
 							loop(State)
 					end
 			end;
-		{From,{invite,PlayerId}} ->
-			case lists:keyfind(PlayerId,2,State#state.shadows) of
-				#shadow_info{shadow_pid=ShadowPid} -> 
-					game:start(From,ShadowPid);
+		{ProxyInfo,{invite,PlayerId}} ->
+			case lists:keyfind(PlayerId,2,State#state.proxy_infos) of
+				ProxyInfo1 -> game:start(ProxyInfo,ProxyInfo1);
 				false -> ok
 			end,
 			loop(State);

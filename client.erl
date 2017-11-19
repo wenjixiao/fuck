@@ -6,12 +6,12 @@
 -define(myinvite_bt,102).
 -define(myconnect_bt,103).
 
--compile(export_all).
+-export([start/0]).
 
 -record(server_msg,{msg}).
 -record(game_msg,{game_id,msg}).
 
--record(player,{name,level}).
+-record(player,{player_id,level}).
 -record(state,{frame,socket,player}).
 
 send(Msg) -> self() ! {send,Msg}.
@@ -71,16 +71,16 @@ loop(State) ->
 			end;
     	#wx{event=#wxClose{}} ->
 		    io:format("close window~n"),
-		    gen_tcp:shutdown(State#state.socket,read_write),
+		    % gen_tcp:shutdown(State#state.socket,read_write),
             gen_tcp:close(State#state.socket),
             wxFrame:destroy(State#state.frame);
         {tcp,Socket,Bin} -> 
             Msg = binary_to_term(Bin),
             io:format("client ~p: socket->: ~p~n",[self(),Msg]),
 			case Msg of
-				{login_return,value,Player} -> 
+				#server_msg{msg={login_return,value,Player}} -> 
 					loop(State#state{player=Player});
-				{login_return,false,Reason} ->
+				#server_msg{msg={login_return,false,Reason}} ->
 					io:format("login error: ~p~n",[Reason]),
 					loop(State) 
 			end;
