@@ -4,7 +4,7 @@
 
 -export([start/2,send/2,close/1]).
 
--record(state,{socket,player,server_pid,playing_game_infos=[],watching_game_infos=[]}).
+-record(state,{socket,player,server_pid,game_infos=[]}).
 
 send(Pid,Msg) -> Pid ! {send,Msg}.
 close(Pid) -> Pid ! close.
@@ -20,21 +20,26 @@ loop(State) ->
             	#server_msg{msg=Msg} -> 
             		State#state.server_pid ! {ProxyInfo,Msg};
             	#game_msg{game_id=GameId,msg=Msg} ->
-            		game_infos = State#state.playing_game_infos ++ State#state.watching_game_infos,
-					case lists:keyfind(GameId,2,game_infos) of
+					case lists:keyfind(GameId,2,State#state.game_infos) of
 						#game_info{game_pid=GamePid} -> 
 							GamePid ! {ProxyInfo,Msg};
 						false -> throw("can't find game id!")
 					end
 			end,
-            io:format("client_proxy ~p: socket->: ~p~n",[self(),Msg]),
             loop(State);
         {tcp_closed,Socket} -> 
-            io:format("client_proxy ~p: socket->: tcp_closed~n",[self()]);
+        	ProxyInfo = #proxy_info{proxy_pid=self(),State#state.player},
+        	% tell server
+        	State#state.server_pid ! {ProxyInfo,connbroken},
+        	% tell every game
+        	lists:foreach(
+        		fun(GameInfo) -> 
+        			GameInfo#game_info.game_pid ! {ProxyInfo,connbroken} 
+        		end,
+        		State#state.game_infos);
         close ->
         	gen_tcp:close(State#state.socket);
         {send,Msg} -> 
-            io:format("client_proxy ~p: ->socket: ~p~n",[self(),Msg]),
             NewState = case Msg of
 							#server_msg{msg={login_return,value,Player}} -> State#state{player=Player};
 							Other -> State 

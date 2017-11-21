@@ -1,3 +1,10 @@
+% color
+-define(BLACK,1).
+-define(WHITE,0).
+% levels
+-define(LevelK,"k").
+-define(LevelD,"d").
+-define(LevelP,"p").
 % win types
 -define(MID_WIN,0).
 -define(COUNT_WIN,1).
