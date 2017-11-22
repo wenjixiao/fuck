@@ -2,7 +2,7 @@
 
 -include("planet.hrl").
 
--export([start/0,mount/1,range/2]).
+-export([start/0,level_mount/1,level_range/2]).
 
 -record(state,{proxy_infos,broken_proxy_infos,game_infos}).
 
@@ -12,7 +12,7 @@ start() ->
 
 %% 把level量化，以便计算 
 %% 18k->...->1k->1d->...->9d->1p->...->9p
-mount(Level) ->
+level_mount(Level) ->
 	{NumStr,SuffixStr} = lists:split(length(Level)-1,Level),
 	Num = list_to_integer(NumStr),
 	LevelMinK = 18, LevelMaxD = 9,
@@ -21,21 +21,50 @@ mount(Level) ->
 		?LevelD -> LevelMinK + Num;
 		?LevelP -> LevelMinK + LevelMaxD + Num
 	end.
+	
+%% 有交集吗？
+has_intersection(Min1,Max1,Min2,Max2) -> not ((min1 > max2) or (max1 < min2)).
+
+value_in_range(Value,Min,Max) -> (Value >= Min) and (Value =< Max).
+	
+%% 条件符合吗？ invite_condition and wait_condition
+%% InviteCondition is from Player1
+is_condition_match(InviteCondition,Player1,Player2) ->
+	WaitCond = Player2#player.wait_condition,
+	% level condition
+	{Min1,Max1} = level_range(Player1#player.level,InviteCondition#invite_condition.level_diff),
+	{Min2,Max2} = level_range(Player2#player.level,WaitCond#wait_condition.level_diff),
+	LevelCond = has_intersection(Min1,Max1,Min2,Max2),
+	% seconds condition
+	Time = InviteCondition#invite_condition.time,
+	SecondsCond = (Time#time.seconds >= WaitCond#wait_condition.min_seconds) and
+				(Time#time.seconds =< WaitCond#wait_condition.max_seconds),
+	% time condition
+	Counting = Time#time.counting,
+	% counting condition
+	CountdownCond = value_in_range(Counting#counting.countdown,
+		WaitCond#wait_condition.min_countdown,WaitCond#wait_condition.max_countdown),
+	TimesRetentCond = value_in_range(Counting#counting.times_retent,
+		WaitCond#wait_condition.min_times_retent,WaitCond#wait_condition.max_times_retent),
+	SecondsPerTimeCond = value_in_range(Counting#counting.seconds_per_time,
+		WaitCond#wait_condition.min_seconds_per_time,WaitCond#wait_condition.max_seconds_per_time),
+	% all together
+	LevelCond and SecondsCond and CountdownCond and TimesRetentCond and SecondsPerTimeCond.
 
 %% 对局条件一般是等级差距大概是多少，然后确定对方等级是否在范围内
-range(Level,Diff) ->
-	Mount = mount(Level),
+level_range(Level,Diff) ->
+	Mount = level_mount(Level),
 	MinMount = Mount - Diff, MaxMount = Mount + Diff,
 	MinMount1 = if MinMount < 1 -> 1; MinMount >= 1 -> MinMount end,
 	MaxMount1 = if MaxMount > 36 -> 36; MaxMount =< 36 -> MaxMount end,
 	{MinMount1,MaxMount1}.
 
 make_rule(Player1,Player2,InviteCondition) ->
-	DeltaLevel = abs(mount(Player1#player.level) - mount(Player2#player.level)),
+	DeltaLevel = abs(level_mount(Player1#player.level) - level_mount(Player2#player.level)),
 	Rule = #rule{handicap = DeltaLevel},
 	Komi = if DeltaLevel == 0 -> 6.5; DeltaLevel =/= 0 -> DeltaLevel end,
 	Rule#rule{komi = Komi,time=InviteCondition#invite_condition.time}.
-                                                   
+	
 loop(State) ->
 	receive
 		{ProxyInfo,{login,PlayerId,Password}} ->

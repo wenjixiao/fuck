@@ -18,7 +18,7 @@
 -record(rule,{handicap=0,komi=6.5,time}).
 -record(result,{hase_winner,winner_color,win_type,howmuch}).
 -record(wait_condition,{level_diff,
-							min_seconds,mas_seconds,
+							min_seconds,max_seconds,
 							min_countdown,max_countdown,
 							min_times_retent,max_times_retent,
 							min_seconds_per_time,max_seconds_per_time}).
