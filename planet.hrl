@@ -11,8 +11,7 @@
 -define(TIME_WIN,2).
 -define(BROKEN_WIN,3).
 % domain entitys
--record(loc,{x,y}).
--record(stone,{color,loc,seq}).
+-record(stone,{color,point,seq}).
 -record(counting,{countdown,times_retent,seconds_per_time}).
 -record(time,{seconds,counting}).
 -record(rule,{handicap=0,komi=6.5,time}).
