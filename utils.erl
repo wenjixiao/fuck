@@ -1,7 +1,5 @@
 -module(utils).
-
 -export([fuck/0,unique/1]).
-
 -include("planet.hrl").
 
 %% 算block的气

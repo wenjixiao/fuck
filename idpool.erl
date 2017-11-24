@@ -1,7 +1,5 @@
 -module(idpool).
-
 -behaviour(gen_server).
-
 -compile(export_all).
 
 %%

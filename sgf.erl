@@ -20,8 +20,7 @@ parse(String,Offset,Acc) ->
 	RE = "(B|W)\\[([a-t])([a-t])\\]",
 	case re:run(String,RE,[dotall,{capture,first,index},{offset,Offset}]) of
 		nomatch -> Acc;
-		{match,[{Index,Len}]} ->
-			parse(String,Index+Len,Acc++[string:substr(String,Index+1,Len)])
+		{match,[{Index,Len}]} -> parse(String,Index+Len,Acc++[string:substr(String,Index+1,Len)])
 	end.
 
 parse_stones(StoneStrList) -> parse_stones(StoneStrList,[]).

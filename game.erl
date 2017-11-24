@@ -1,7 +1,5 @@
 -module(game).
-
 -include("planet.hrl").
-
 -export([start/3,maybe_swap/1]).
 
 % ?BLACK -> 0,?WHITE->1

@@ -1,9 +1,6 @@
 -module(server).
-
 -include("planet.hrl").
-
 -export([start/0,level_mount/1,level_range/2]).
-
 -record(state,{proxy_infos,broken_proxy_infos,game_infos}).
 
 start() ->

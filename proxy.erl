@@ -1,9 +1,6 @@
 -module(proxy).
-
 -include("planet.hrl").
-
 -export([start/2,send/2,close/1]).
-
 -record(state,{socket,player,server_pid,game_infos=[]}).
 
 send(Pid,Msg) -> Pid ! {send,Msg}.
